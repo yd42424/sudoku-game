@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#667eea" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="스도쿠" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>스도쿠</title>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:10px;
+    }
+    .container {
+      background:#fff;
+      border-radius:20px;
+      padding:20px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+      max-width:500px;
+      width:100%;
+      position:relative;
+    }
+    h1 {
+      text-align:center;
+      color:#667eea;
+      margin-bottom:20px;
+      font-size:28px;
+    }
+
+    .mode-selector {
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap:10px;
+      margin-bottom:20px;
+    }
+    .mode-btn {
+      padding:15px;
+      border:none;
+      border-radius:12px;
+      font-size:16px;
+      font-weight:700;
+      cursor:pointer;
+      transition: all 0.2s;
+      background:#f7fafc;
+      color:#2d3748;
+      border:2px solid #e2e8f0;
+    }
+    .mode-btn.active {
+      background:#667eea;
+      color:#fff;
+      border-color:#667eea;
+      transform:scale(1.02);
+    }
+
+    .stage-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:15px;
+      padding:15px;
+      background:#f7fafc;
+      border-radius:12px;
+      position:relative;
+    }
+    .stage-info{ display:flex; align-items:center; gap:15px; }
+    .stage-number{ font-size:24px; font-weight:700; color:#667eea; }
+    .stage-progress{ font-size:14px; color:#718096; }
+
+    .stage-controls{ display:flex; align-items:center; gap:8px; position:relative; }
+    /* 좌/우는 항상 보이게 */
+    .stage-nav{ display:flex; gap:8px; }
+
+    .options-btn{
+      width:40px; height:40px;
+      border:none;
+      border-radius:8px;
+      background:#cbd5e0;
+      color:#2d3748;
+      font-size:20px;
+      font-weight:700;
+      cursor:pointer;
+      transition: all 0.15s;
+    }
+    .options-btn:active{ transform:scale(0.95); background:#a0aec0; }
+
+    .nav-btn{
+      width:40px; height:40px;
+      border:none;
+      border-radius:8px;
+      background:#667eea;
+      color:#fff;
+      font-size:18px;
+      font-weight:700;
+      cursor:pointer;
+      transition: all 0.15s;
+    }
+    .nav-btn:active{ transform:scale(0.95); }
+    .nav-btn:disabled{ background:#cbd5e0; cursor:not-allowed; }
+
+    /* 설정 패널(⚙ 토글 대상) */
+    .settings-panel{
+      position:absolute;
+      right:0;
+      top:48px;
+      width:220px;
+      background:#fff;
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      box-shadow:0 12px 30px rgba(0,0,0,0.15);
+      padding:12px;
+      display:none;
+      z-index:20;
+    }
+    .settings-panel.show{ display:block; }
+    .settings-title{ font-weight:800; color:#2d3748; margin-bottom:10px; }
+    .settings-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin:8px 0; font-size:14px; color:#4a5568; }
+    .settings-row input{
+      width:80px;
+      padding:6px 8px;
+      border:1px solid #e2e8f0;
+      border-radius:8px;
+      font-size:14px;
+    }
+    .settings-actions{ display:flex; gap:8px; margin-top:10px; }
+    .sbtn{
+      flex:1;
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      font-weight:700;
+      cursor:pointer;
+      transition:all 0.15s;
+      font-size:13px;
+    }
+    .sbtn.primary{ background:#667eea; color:#fff; }
+    .sbtn.gray{ background:#edf2f7; color:#2d3748; }
+    .sbtn:active{ transform:scale(0.97); }
+
+    .controls{ display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap; }
+    button.ctrl{
+      flex:1;
+      padding:12px;
+      border:none;
+      border-radius:10px;
+      font-size:14px;
+      font-weight:600;
+      cursor:pointer;
+      transition: all 0.15s;
+      min-width:80px;
+    }
+    .btn-hint{ background:#48bb78; color:#fff; }
+    .btn-check{ background:#ed8936; color:#fff; }
+    .btn-memo{ background:#9f7aea; color:#fff; }
+    .btn-memo.active{ background:#6b46c1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+    .btn-restart{ background:#fc8181; color:#fff; }
+    button.ctrl:active{ transform:scale(0.97); }
+
+    .board{
+      display:grid;
+      grid-template-columns:repeat(9, 1fr);
+      background:#2d3748;
+      padding:2px;
+      border-radius:10px;
+      margin-bottom:15px;
+      aspect-ratio:1;
+    }
+    .cell{
+      background:#fff;
+      border:1px solid #e2e8f0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:20px;
+      font-weight:600;
+      cursor:pointer;
+      position:relative;
+      transition: all 0.12s;
+    }
+    .cell .main-number{
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%, -50%);
+    }
+    .cell .notes{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      grid-template-rows:repeat(3, 1fr);
+      width:100%;
+      height:100%;
+      padding:2px;
+      gap:1px;
+    }
+    .cell .note{
+      font-size:8px;
+      font-weight:600;
+      color:#718096;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .cell:nth-child(3n){ border-right:2px solid #2d3748; }
+    .cell:nth-child(n+19):nth-child(-n+27),
+    .cell:nth-child(n+46):nth-child(-n+54){ border-bottom:2px solid #2d3748; }
+
+    .cell.fixed{ background:#edf2f7; color:#2d3748; cursor:default; }
+    .cell.selected{ background:#bee3f8; }
+    .cell.highlighted{ background:#e6fffa; }
+    .cell.error{ background:#fed7d7; color:#c53030; }
+    .cell.correct{ background:#c6f6d5; color:#2f855a; }
+
+    .number-pad{
+      display:grid;
+      grid-template-columns:repeat(5, 1fr);
+      gap:8px;
+      margin-bottom:15px;
+    }
+    .number-btn{
+      aspect-ratio:1;
+      background:#f7fafc;
+      border:2px solid #e2e8f0;
+      border-radius:12px;
+      font-size:22px;
+      font-weight:700;
+      color:#2d3748;
+      cursor:pointer;
+      transition: all 0.12s;
+    }
+    .number-btn:active{
+      transform:scale(0.92);
+      background:#667eea;
+      color:#fff;
+      border-color:#667eea;
+    }
+    .number-btn.erase{
+      background:#fc8181;
+      color:#fff;
+      font-size:14px;
+      border-color:#fc8181;
+      grid-column: span 2;
+    }
+    .number-btn.erase:active{ background:#f56565; }
+
+    .stats{
+      display:flex;
+      justify-content:space-around;
+      padding:15px;
+      background:#f7fafc;
+      border-radius:10px;
+      margin-bottom:10px;
+    }
+    .stat{text-align:center;}
+    .stat-label{ font-size:12px; color:#718096; margin-bottom:5px; }
+    .stat-value{ font-size:20px; font-weight:700; color:#2d3748; }
+
+    .message{
+      text-align:center;
+      padding:15px;
+      border-radius:10px;
+      margin-top:10px;
+      font-weight:600;
+      display:none;
+    }
+    .message.show{ display:block; }
+    .message.success{ background:#c6f6d5; color:#2f855a; }
+    .message.info{ background:#bee3f8; color:#2c5282; }
+
+    .completion-modal{
+      display:none;
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.7);
+      z-index:1000;
+      align-items:center;
+      justify-content:center;
+    }
+    .completion-modal.show{ display:flex; }
+    .modal-content{
+      background:#fff;
+      padding:40px;
+      border-radius:20px;
+      text-align:center;
+      max-width:400px;
+      margin:20px;
+    }
+    .modal-content h2{ font-size:32px; margin-bottom:20px; color:#667eea; }
+    .modal-content p{ font-size:18px; margin-bottom:30px; color:#4a5568; }
+    .modal-btn{
+      padding:15px 30px;
+      margin:5px;
+      border:none;
+      border-radius:10px;
+      font-size:16px;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .modal-btn.primary{ background:#667eea; color:#fff; }
+    .modal-btn.primary:active{ transform:scale(0.97); background:#5568d3; }
+
+    @media (max-width: 400px){
+      .container{ padding:15px; }
+      h1{ font-size:24px; margin-bottom:15px; }
+      .cell{ font-size:18px; }
+      .cell .note{ font-size:7px; }
+      .number-btn{ font-size:20px; }
+      button.ctrl{ padding:10px; font-size:13px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="appRoot">
+    <h1>🎯 스도쿠</h1>
+
+    <div class="mode-selector">
+      <button class="mode-btn active" data-mode="easy">쉬움</button>
+      <button class="mode-btn" data-mode="medium">보통</button>
+      <button class="mode-btn" data-mode="hard">어려움</button>
+      <button class="mode-btn" data-mode="expert">전문가</button>
+    </div>
+
+    <div class="stage-header">
+      <div class="stage-info">
+        <div class="stage-number">Stage <span id="stageNum">1</span></div>
+        <div class="stage-progress"><span id="cleared">0</span>/100</div>
+      </div>
+
+      <div class="stage-controls">
+        <div class="stage-nav">
+          <button class="nav-btn" id="prevBtn">◀</button>
+          <button class="nav-btn" id="nextBtn">▶</button>
+        </div>
+
+        <button class="options-btn" id="settingsBtn" aria-label="settings">⚙</button>
+
+        <div class="settings-panel" id="settingsPanel">
+          <div class="settings-title">설정</div>
+
+          <div class="settings-row">
+            <span>스테이지 이동</span>
+            <input id="jumpStageInput" type="number" min="1" max="100" value="1" />
+          </div>
+
+          <div class="settings-actions">
+            <button class="sbtn primary" id="jumpBtn">이동</button>
+            <button class="sbtn gray" id="closeSettingsBtn">닫기</button>
+          </div>
+
+          <div class="settings-actions">
+            <button class="sbtn gray" id="resetModeProgressBtn">이 모드 초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl btn-hint" id="hintBtn">힌트</button>
+      <button class="ctrl btn-memo" id="memoBtn">메모</button>
+      <button class="ctrl btn-check" id="checkBtn">확인</button>
+      <button class="ctrl btn-restart" id="restartBtn">다시</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">시간</div>
+        <div class="stat-value" id="timer">00:00</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">힌트</div>
+        <div class="stat-value" id="hints">3</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">진행률</div>
+        <div class="stat-value" id="progress">0%</div>
+      </div>
+    </div>
+
+    <div class="board" id="board"></div>
+    <div class="number-pad" id="numberPad"></div>
+    <div class="message" id="message"></div>
+  </div>
+
+  <div class="completion-modal" id="completionModal">
+    <div class="modal-content">
+      <h2>🎉 완성!</h2>
+      <p id="modalMessage">스테이지를 클리어했습니다!</p>
+      <button class="modal-btn primary" id="nextStageModalBtn">다음 스테이지</button>
+    </div>
+  </div>
+
+  <script>
+    let board = [];
+    let solution = [];
+    let selectedCell = null;
+    let fixed = [];
+    let timer = 0;
+    let timerInterval = null;
+    let hintsRemaining = 3;
+    let memoMode = false;
+    let notes = [];
+
+    let currentMode = 'easy';
+    let currentStage = 1;
+    let stageProgress = {
+      easy: loadProgress('easy'),
+      medium: loadProgress('medium'),
+      hard: loadProgress('hard'),
+      expert: loadProgress('expert')
+    };
+
+    function loadProgress(mode) {
+      const saved = localStorage.getItem(`sudoku_progress_${mode}`);
+      return saved ? JSON.parse(saved) : { cleared: 0, stages: {} };
+    }
+    function saveProgress(mode) {
+      localStorage.setItem(`sudoku_progress_${mode}`, JSON.stringify(stageProgress[mode]));
+    }
+
+    function hashCode(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash);
+    }
+
+    class SeededRandom {
+      constructor(seed) { this.seed = seed; }
+      next() {
+        this.seed = (this.seed * 9301 + 49297) % 233280;
+        return this.seed / 233280;
+      }
+      shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(this.next() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+      }
+    }
+
+    function generateSudoku(difficulty, seed) {
+      const rng = new SeededRandom(seed);
+      const grid = Array(9).fill(null).map(() => Array(9).fill(0));
+
+      function isValid(g, row, col, num) {
+        for (let x = 0; x < 9; x++) {
+          if (g[row][x] === num || g[x][col] === num) return false;
+        }
+        const startRow = Math.floor(row / 3) * 3;
+        const startCol = Math.floor(col / 3) * 3;
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            if (g[startRow + i][startCol + j] === num) return false;
+          }
+        }
+        return true;
+      }
+
+      function fillGrid(g) {
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            if (g[row][col] === 0) {
+              const numbers = rng.shuffle([1,2,3,4,5,6,7,8,9]);
+              for (const num of numbers) {
+                if (isValid(g, row, col, num)) {
+                  g[row][col] = num;
+                  if (fillGrid(g)) return true;
+                  g[row][col] = 0;
+                }
+              }
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      fillGrid(grid);
+      solution = grid.map(r => [...r]);
+
+      const cellsToRemove = { easy: 35, medium: 45, hard: 55, expert: 65 };
+      const removeCount = cellsToRemove[difficulty];
+
+      let removed = 0;
+      fixed = Array(9).fill(null).map(() => Array(9).fill(false));
+
+      while (removed < removeCount) {
+        const row = Math.floor(rng.next() * 9);
+        const col = Math.floor(rng.next() * 9);
+        if (grid[row][col] !== 0) {
+          grid[row][col] = 0;
+          removed++;
+        }
+      }
+
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          fixed[i][j] = grid[i][j] !== 0;
+        }
+      }
+
+      notes = Array(9).fill(null).map(() =>
+        Array(9).fill(null).map(() => new Set())
+      );
+
+      return grid;
+    }
+
+    function createBoard() {
+      const boardElement = document.getElementById('board');
+      boardElement.innerHTML = '';
+
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.dataset.row = i;
+          cell.dataset.col = j;
+
+          if (board[i][j] !== 0) {
+            const mainNum = document.createElement('div');
+            mainNum.className = 'main-number';
+            mainNum.textContent = board[i][j];
+            cell.appendChild(mainNum);
+            if (fixed[i][j]) cell.classList.add('fixed');
+          } else if (notes[i][j].size > 0) {
+            const notesDiv = document.createElement('div');
+            notesDiv.className = 'notes';
+            for (let n = 1; n <= 9; n++) {
+              const noteCell = document.createElement('div');
+              noteCell.className = 'note';
+              if (notes[i][j].has(n)) noteCell.textContent = n;
+              notesDiv.appendChild(noteCell);
+            }
+            cell.appendChild(notesDiv);
+          }
+
+          cell.addEventListener('click', () => selectCell(i, j));
+          boardElement.appendChild(cell);
+        }
+      }
+    }
+
+    function createNumberPad() {
+      const padElement = document.getElementById('numberPad');
+      padElement.innerHTML = '';
+
+      for (let i = 1; i <= 9; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'number-btn';
+        btn.textContent = i;
+        btn.onclick = () => placeNumber(i);
+        padElement.appendChild(btn);
+      }
+
+      const eraseBtn = document.createElement('button');
+      eraseBtn.className = 'number-btn erase';
+      eraseBtn.textContent = '지우기';
+      eraseBtn.onclick = () => eraseCell();
+      padElement.appendChild(eraseBtn);
+    }
+
+    function selectCell(row, col) {
+      if (fixed[row][col]) return;
+      selectedCell = { row, col };
+
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        cell.classList.remove('selected', 'highlighted');
+        const r = parseInt(cell.dataset.row, 10);
+        const c = parseInt(cell.dataset.col, 10);
+        if (r === row && c === col) cell.classList.add('selected');
+        else if (r === row || c === col) cell.classList.add('highlighted');
+      });
+    }
+
+    function placeNumber(num) {
+      if (!selectedCell) return;
+      const { row, col } = selectedCell;
+      if (fixed[row][col]) return;
+
+      if (memoMode) {
+        if (notes[row][col].has(num)) notes[row][col].delete(num);
+        else notes[row][col].add(num);
+      } else {
+        board[row][col] = num;
+        notes[row][col].clear();
+      }
+
+      updateBoard();
+      updateProgress();
+    }
+
+    function eraseCell() {
+      if (!selectedCell) return;
+      const { row, col } = selectedCell;
+      if (fixed[row][col]) return;
+
+      board[row][col] = 0;
+      notes[row][col].clear();
+
+      updateBoard();
+      updateProgress();
+    }
+
+    function toggleMemoMode() {
+      memoMode = !memoMode;
+      const btn = document.getElementById('memoBtn');
+      if (memoMode) {
+        btn.classList.add('active');
+        btn.textContent = '메모중';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = '메모';
+      }
+    }
+
+    function updateBoard() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        const row = parseInt(cell.dataset.row, 10);
+        const col = parseInt(cell.dataset.col, 10);
+
+        if (!fixed[row][col]) {
+          cell.innerHTML = '';
+          if (board[row][col] !== 0) {
+            const mainNum = document.createElement('div');
+            mainNum.className = 'main-number';
+            mainNum.textContent = board[row][col];
+            cell.appendChild(mainNum);
+          } else if (notes[row][col].size > 0) {
+            const notesDiv = document.createElement('div');
+            notesDiv.className = 'notes';
+            for (let n = 1; n <= 9; n++) {
+              const noteCell = document.createElement('div');
+              noteCell.className = 'note';
+              if (notes[row][col].has(n)) noteCell.textContent = n;
+              notesDiv.appendChild(noteCell);
+            }
+            cell.appendChild(notesDiv);
+          }
+        }
+      });
+    }
+
+    function updateProgress() {
+      const filled = board.flat().filter(x => x !== 0).length;
+      const progress = Math.round((filled / 81) * 100);
+      document.getElementById('progress').textContent = progress + '%';
+      if (filled === 81) checkSolution(true);
+    }
+
+    function checkSolution(auto = false) {
+      let incorrect = 0;
+      const cells = document.querySelectorAll('.cell');
+
+      cells.forEach(cell => {
+        const row = parseInt(cell.dataset.row, 10);
+        const col = parseInt(cell.dataset.col, 10);
+
+        cell.classList.remove('error', 'correct');
+
+        if (board[row][col] !== 0 && !fixed[row][col]) {
+          if (board[row][col] === solution[row][col]) {
+            if (!auto) cell.classList.add('correct');
+          } else {
+            cell.classList.add('error');
+            incorrect++;
+          }
+        }
+      });
+
+      const allMatch = board.flat().every((x, i) => x === solution.flat()[i]);
+
+      if (incorrect === 0 && allMatch) {
+        stopTimer();
+
+        const stageKey = `stage_${currentStage}`;
+        if (!stageProgress[currentMode].stages[stageKey]) {
+          stageProgress[currentMode].stages[stageKey] = true;
+          stageProgress[currentMode].cleared++;
+          saveProgress(currentMode);
+          updateStageDisplay();
+        }
+
+        document.getElementById('modalMessage').textContent =
+          `완성! 시간: ${document.getElementById('timer').textContent}`;
+        document.getElementById('completionModal').classList.add('show');
+
+      } else if (incorrect > 0 && !auto) {
+        showMessage(`틀린 칸: ${incorrect}개`, 'info');
+        setTimeout(() => {
+          cells.forEach(c => c.classList.remove('error', 'correct'));
+        }, 2000);
+      }
+    }
+
+    function getHint() {
+      if (hintsRemaining <= 0) {
+        showMessage('힌트를 모두 사용했습니다', 'info');
+        return;
+      }
+
+      const emptyCells = [];
+      for (let i = 0; i < 9; i++) {
+        for (let j = 0; j < 9; j++) {
+          if (board[i][j] === 0) emptyCells.push({ row: i, col: j });
+        }
+      }
+      if (emptyCells.length === 0) return;
+
+      const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      board[randomCell.row][randomCell.col] = solution[randomCell.row][randomCell.col];
+      fixed[randomCell.row][randomCell.col] = true;
+
+      hintsRemaining--;
+      document.getElementById('hints').textContent = hintsRemaining;
+
+      createBoard();
+      updateProgress();
+      showMessage('힌트가 추가되었습니다', 'info');
+    }
+
+    function updateStageDisplay() {
+      document.getElementById('stageNum').textContent = currentStage;
+      document.getElementById('cleared').textContent = stageProgress[currentMode].cleared;
+
+      document.getElementById('prevBtn').disabled = currentStage <= 1;
+      document.getElementById('nextBtn').disabled = currentStage >= 100;
+      document.getElementById('jumpStageInput').value = currentStage;
+    }
+
+    function loadStage() {
+      const seed = hashCode(`${currentMode}_${currentStage}`);
+
+      board = generateSudoku(currentMode, seed);
+      selectedCell = null;
+      hintsRemaining = 3;
+      timer = 0;
+
+      document.getElementById('hints').textContent = hintsRemaining;
+      document.getElementById('progress').textContent = '0%';
+
+      createBoard();
+      startTimer();
+      hideMessage();
+    }
+
+    function prevStage() {
+      if (currentStage > 1) {
+        currentStage--;
+        updateStageDisplay();
+        loadStage();
+      }
+    }
+
+    function nextStage() {
+      if (currentStage < 100) {
+        currentStage++;
+        updateStageDisplay();
+        loadStage();
+      }
+    }
+
+    function nextStageFromModal() {
+      document.getElementById('completionModal').classList.remove('show');
+      if (currentStage < 100) {
+        currentStage++;
+        updateStageDisplay();
+        loadStage();
+      } else {
+        showMessage('모든 스테이지를 완료했습니다! 🎉', 'success');
+      }
+    }
+
+    function restartStage() {
+      loadStage();
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timer = 0;
+      timerInterval = setInterval(() => {
+        timer++;
+        const minutes = Math.floor(timer / 60);
+        const seconds = timer % 60;
+        document.getElementById('timer').textContent =
+          `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = `message show ${type}`;
+      setTimeout(() => msg.classList.remove('show'), 3000);
+    }
+
+    function hideMessage() {
+      document.getElementById('message').className = 'message';
+    }
+
+    function toggleSettingsPanel(force) {
+      const panel = document.getElementById('settingsPanel');
+      const show = typeof force === 'boolean' ? force : !panel.classList.contains('show');
+      panel.classList.toggle('show', show);
+    }
+
+    function resetModeProgress() {
+      if (!confirm('이 모드의 진행도를 초기화할까요?')) return;
+      stageProgress[currentMode] = { cleared: 0, stages: {} };
+      saveProgress(currentMode);
+      updateStageDisplay();
+      showMessage('진행도가 초기화되었습니다', 'info');
+    }
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentMode = btn.dataset.mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        currentStage = 1;
+        updateStageDisplay();
+        loadStage();
+      });
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', prevStage);
+    document.getElementById('nextBtn').addEventListener('click', nextStage);
+
+    document.getElementById('settingsBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSettingsPanel();
+    });
+    document.getElementById('closeSettingsBtn').addEventListener('click', () => toggleSettingsPanel(false));
+    document.getElementById('jumpBtn').addEventListener('click', () => {
+      const v = parseInt(document.getElementById('jumpStageInput').value, 10);
+      if (!Number.isFinite(v) || v < 1 || v > 100) {
+        showMessage('스테이지는 1~100만 가능', 'info');
+        return;
+      }
+      currentStage = v;
+      updateStageDisplay();
+      loadStage();
+      toggleSettingsPanel(false);
+    });
+    document.getElementById('resetModeProgressBtn').addEventListener('click', resetModeProgress);
+
+    document.addEventListener('click', () => toggleSettingsPanel(false));
+
+    document.getElementById('hintBtn').addEventListener('click', getHint);
+    document.getElementById('memoBtn').addEventListener('click', toggleMemoMode);
+    document.getElementById('checkBtn').addEventListener('click', () => checkSolution(false));
+    document.getElementById('restartBtn').addEventListener('click', restartStage);
+    document.getElementById('nextStageModalBtn').addEventListener('click', nextStageFromModal);
+
+    createNumberPad();
+    updateStageDisplay();
+    loadStage();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered:', reg))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    }
+  </script>
+</body>
+</html>
