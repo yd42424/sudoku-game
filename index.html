@@ -13,6 +13,7 @@
 
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -22,6 +23,7 @@
       align-items:center;
       padding:10px;
     }
+
     .container {
       background:#fff;
       border-radius:20px;
@@ -31,6 +33,7 @@
       width:100%;
       position:relative;
     }
+
     h1 {
       text-align:center;
       color:#667eea;
@@ -78,7 +81,6 @@
     .stage-progress{ font-size:14px; color:#718096; }
 
     .stage-controls{ display:flex; align-items:center; gap:8px; position:relative; }
-    /* 좌/우는 항상 보이게 */
     .stage-nav{ display:flex; gap:8px; }
 
     .options-btn{
@@ -108,7 +110,6 @@
     .nav-btn:active{ transform:scale(0.95); }
     .nav-btn:disabled{ background:#cbd5e0; cursor:not-allowed; }
 
-    /* 설정 패널(⚙ 토글 대상) */
     .settings-panel{
       position:absolute;
       right:0;
@@ -165,6 +166,53 @@
     .btn-memo.active{ background:#6b46c1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
     .btn-restart{ background:#fc8181; color:#fff; }
     button.ctrl:active{ transform:scale(0.97); }
+
+    /* ===== 통계(접기/펼치기) ===== */
+    .stats{
+      display:flex;
+      justify-content:space-around;
+      padding:15px;
+      background:#f7fafc;
+      border-radius:10px;
+      margin-bottom:10px;
+      position:relative;
+      align-items:center;
+      min-height:56px;
+    }
+    .stats-inner{
+      display:flex;
+      width:100%;
+      justify-content:space-around;
+      gap:10px;
+      padding-right:44px; /* 토글 버튼 자리 */
+    }
+    .stat{text-align:center;}
+    .stat-label{ font-size:12px; color:#718096; margin-bottom:5px; }
+    .stat-value{ font-size:20px; font-weight:700; color:#2d3748; }
+
+    .stats-toggle{
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform:translateY(-50%);
+      width:34px; height:34px;
+      border:none;
+      border-radius:10px;
+      background:#e2e8f0;
+      color:#2d3748;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .stats-toggle:active{ transform:translateY(-50%) scale(0.95); }
+
+    .stats.collapsed .stats-inner{
+      display:none;
+    }
+    .stats.collapsed{
+      justify-content:flex-start;
+      padding-left:14px;
+    }
 
     .board{
       display:grid;
@@ -241,26 +289,15 @@
       color:#fff;
       border-color:#667eea;
     }
+
+    /* ✅ 지우기 버튼을 숫자와 같은 크기로 (span 제거) */
     .number-btn.erase{
       background:#fc8181;
       color:#fff;
-      font-size:14px;
       border-color:#fc8181;
-      grid-column: span 2;
+      font-size:22px;
     }
     .number-btn.erase:active{ background:#f56565; }
-
-    .stats{
-      display:flex;
-      justify-content:space-around;
-      padding:15px;
-      background:#f7fafc;
-      border-radius:10px;
-      margin-bottom:10px;
-    }
-    .stat{text-align:center;}
-    .stat-label{ font-size:12px; color:#718096; margin-bottom:5px; }
-    .stat-value{ font-size:20px; font-weight:700; color:#2d3748; }
 
     .message{
       text-align:center;
@@ -369,19 +406,24 @@
       <button class="ctrl btn-restart" id="restartBtn">다시</button>
     </div>
 
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-label">시간</div>
-        <div class="stat-value" id="timer">00:00</div>
+    <!-- ✅ statsBar + stats-inner + 토글 버튼 -->
+    <div class="stats" id="statsBar">
+      <div class="stats-inner" id="statsInner">
+        <div class="stat">
+          <div class="stat-label">시간</div>
+          <div class="stat-value" id="timer">00:00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">힌트</div>
+          <div class="stat-value" id="hints">3</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">진행률</div>
+          <div class="stat-value" id="progress">0%</div>
+        </div>
       </div>
-      <div class="stat">
-        <div class="stat-label">힌트</div>
-        <div class="stat-value" id="hints">3</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">진행률</div>
-        <div class="stat-value" id="progress">0%</div>
-      </div>
+
+      <button class="stats-toggle" id="statsToggle" type="button" aria-label="통계 접기/펼치기">▾</button>
     </div>
 
     <div class="board" id="board"></div>
@@ -567,7 +609,8 @@
 
       const eraseBtn = document.createElement('button');
       eraseBtn.className = 'number-btn erase';
-      eraseBtn.textContent = '지우기';
+      eraseBtn.textContent = '⌫';
+      eraseBtn.setAttribute('aria-label', '지우기');
       eraseBtn.onclick = () => eraseCell();
       padElement.appendChild(eraseBtn);
     }
@@ -833,6 +876,29 @@
       showMessage('진행도가 초기화되었습니다', 'info');
     }
 
+    /* ===== 통계 접기/펼치기 (로컬 저장) ===== */
+    const statsBar = document.getElementById('statsBar');
+    const statsToggle = document.getElementById('statsToggle');
+
+    function applyStatsCollapsed(collapsed){
+      if (collapsed) {
+        statsBar.classList.add('collapsed');
+        statsToggle.textContent = '▸';
+      } else {
+        statsBar.classList.remove('collapsed');
+        statsToggle.textContent = '▾';
+      }
+      localStorage.setItem('sudoku_stats_collapsed', collapsed ? '1' : '0');
+    }
+
+    applyStatsCollapsed(localStorage.getItem('sudoku_stats_collapsed') === '1');
+
+    statsToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applyStatsCollapsed(!statsBar.classList.contains('collapsed'));
+    });
+
+    /* ===== 이벤트 바인딩 ===== */
     document.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         currentMode = btn.dataset.mode;
@@ -874,10 +940,12 @@
     document.getElementById('restartBtn').addEventListener('click', restartStage);
     document.getElementById('nextStageModalBtn').addEventListener('click', nextStageFromModal);
 
+    /* ===== 초기화 ===== */
     createNumberPad();
     updateStageDisplay();
     loadStage();
 
+    /* ===== PWA 서비스 워커 ===== */
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js')
         .then(reg => console.log('Service Worker registered:', reg))
